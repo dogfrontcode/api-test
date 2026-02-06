@@ -1,0 +1,712 @@
+{
+  "info": {
+    "name": "API Security Lab",
+    "_postman_id": "api-security-lab-v1",
+    "description": "Laboratório educacional de segurança de APIs - Comparação entre APIs vulnerável (/insecure) e segura (/secure)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:3000",
+      "type": "string"
+    },
+    {
+      "key": "insecure_session",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "secure_access_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "secure_refresh_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "step_up_token",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Insecure API",
+      "item": [
+        {
+          "name": "Auth",
+          "item": [
+            {
+              "name": "Login (Admin)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "if (pm.response.code === 200) {",
+                      "    var jsonData = pm.response.json();",
+                      "    pm.collectionVariables.set('insecure_session', jsonData.sessionId);",
+                      "}"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"admin@example.com\",\n  \"password\": \"admin123\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{base_url}}/insecure/auth/login",
+                  "host": ["{{base_url}}"],
+                  "path": ["insecure", "auth", "login"]
+                },
+                "description": "Login sem rate limiting e cookie sem flags de segurança"
+              }
+            },
+            {
+              "name": "Login (User)",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"user@example.com\",\n  \"password\": \"user123\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{base_url}}/insecure/auth/login",
+                  "host": ["{{base_url}}"],
+                  "path": ["insecure", "auth", "login"]
+                }
+              }
+            },
+            {
+              "name": "Logout",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/insecure/auth/logout",
+                  "host": ["{{base_url}}"],
+                  "path": ["insecure", "auth", "logout"]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Users",
+          "item": [
+            {
+              "name": "Create User (No Auth)",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"hacker@example.com\",\n  \"password\": \"hacked123\",\n  \"role\": \"admin\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{base_url}}/insecure/users",
+                  "host": ["{{base_url}}"],
+                  "path": ["insecure", "users"]
+                },
+                "description": "VULNERABILIDADE: Pode criar usuário admin sem autenticação"
+              }
+            },
+            {
+              "name": "List Users (No Auth)",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/insecure/users",
+                  "host": ["{{base_url}}"],
+                  "path": ["insecure", "users"]
+                },
+                "description": "VULNERABILIDADE: Lista todos os usuários sem autenticação"
+              }
+            },
+            {
+              "name": "Get User by ID (IDOR)",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/insecure/users/1",
+                  "host": ["{{base_url}}"],
+                  "path": ["insecure", "users", "1"]
+                },
+                "description": "VULNERABILIDADE: IDOR - pode ver qualquer usuário"
+              }
+            },
+            {
+              "name": "Update User (Change Role)",
+              "request": {
+                "method": "PATCH",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"role\": \"admin\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{base_url}}/insecure/users/2",
+                  "host": ["{{base_url}}"],
+                  "path": ["insecure", "users", "2"]
+                },
+                "description": "VULNERABILIDADE: Pode alterar role sem ser admin"
+              }
+            },
+            {
+              "name": "Delete User",
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/insecure/users/2",
+                  "host": ["{{base_url}}"],
+                  "path": ["insecure", "users", "2"]
+                },
+                "description": "VULNERABILIDADE: Pode deletar usuários sem ser admin"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Balance",
+          "item": [
+            {
+              "name": "Credit Balance (Arbitrary userId)",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"userId\": 2,\n  \"amount\": 999999\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{base_url}}/insecure/balance/credit",
+                  "host": ["{{base_url}}"],
+                  "path": ["insecure", "balance", "credit"]
+                },
+                "description": "VULNERABILIDADE: BOLA - pode creditar em qualquer userId"
+              }
+            },
+            {
+              "name": "Get Balance (with userId query)",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/insecure/balance/me?userId=1",
+                  "host": ["{{base_url}}"],
+                  "path": ["insecure", "balance", "me"],
+                  "query": [
+                    {
+                      "key": "userId",
+                      "value": "1",
+                      "description": "VULNERABILIDADE: Query param permite ver saldo de qualquer usuário"
+                    }
+                  ]
+                },
+                "description": "VULNERABILIDADE: BOLA - query param vaza saldo de outros usuários"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Merchant",
+          "item": [
+            {
+              "name": "Update Callback URL (HTTP)",
+              "request": {
+                "method": "PATCH",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"callback_url\": \"http://evil.com/steal-data\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{base_url}}/insecure/merchant/callbackurl",
+                  "host": ["{{base_url}}"],
+                  "path": ["insecure", "merchant", "callbackurl"]
+                },
+                "description": "VULNERABILIDADE: Aceita HTTP, localhost, sem step-up auth"
+              }
+            },
+            {
+              "name": "Update Callback URL (SSRF)",
+              "request": {
+                "method": "PATCH",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"callback_url\": \"http://localhost:8080/internal\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{base_url}}/insecure/merchant/callbackurl",
+                  "host": ["{{base_url}}"],
+                  "path": ["insecure", "merchant", "callbackurl"]
+                },
+                "description": "VULNERABILIDADE: SSRF - aceita localhost"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Secure API",
+      "item": [
+        {
+          "name": "Auth",
+          "item": [
+            {
+              "name": "Login (Admin)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "if (pm.response.code === 200) {",
+                      "    var jsonData = pm.response.json();",
+                      "    pm.collectionVariables.set('secure_access_token', jsonData.accessToken);",
+                      "    pm.collectionVariables.set('secure_refresh_token', jsonData.refreshToken);",
+                      "}"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"admin@example.com\",\n  \"password\": \"admin123\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{base_url}}/secure/auth/login",
+                  "host": ["{{base_url}}"],
+                  "path": ["secure", "auth", "login"]
+                },
+                "description": "Login seguro com JWT, validação e rate limit"
+              }
+            },
+            {
+              "name": "Login (User)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "if (pm.response.code === 200) {",
+                      "    var jsonData = pm.response.json();",
+                      "    pm.collectionVariables.set('secure_access_token', jsonData.accessToken);",
+                      "    pm.collectionVariables.set('secure_refresh_token', jsonData.refreshToken);",
+                      "}"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"user@example.com\",\n  \"password\": \"user123\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{base_url}}/secure/auth/login",
+                  "host": ["{{base_url}}"],
+                  "path": ["secure", "auth", "login"]
+                }
+              }
+            },
+            {
+              "name": "Refresh Token",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "if (pm.response.code === 200) {",
+                      "    var jsonData = pm.response.json();",
+                      "    pm.collectionVariables.set('secure_access_token', jsonData.accessToken);",
+                      "}"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"refreshToken\": \"{{secure_refresh_token}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{base_url}}/secure/auth/refresh",
+                  "host": ["{{base_url}}"],
+                  "path": ["secure", "auth", "refresh"]
+                },
+                "description": "Renova access token com refresh token"
+              }
+            },
+            {
+              "name": "Re-authenticate (Step-up)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "if (pm.response.code === 200) {",
+                      "    var jsonData = pm.response.json();",
+                      "    pm.collectionVariables.set('step_up_token', jsonData.stepUpToken);",
+                      "}"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{secure_access_token}}",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"password\": \"admin123\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{base_url}}/secure/auth/reauth",
+                  "host": ["{{base_url}}"],
+                  "path": ["secure", "auth", "reauth"]
+                },
+                "description": "Gera token temporário para operações sensíveis"
+              }
+            },
+            {
+              "name": "Logout",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{secure_access_token}}",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"refreshToken\": \"{{secure_refresh_token}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{base_url}}/secure/auth/logout",
+                  "host": ["{{base_url}}"],
+                  "path": ["secure", "auth", "logout"]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Users",
+          "item": [
+            {
+              "name": "Create User (Admin only)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{secure_access_token}}",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"newuser@example.com\",\n  \"password\": \"secure123\",\n  \"role\": \"user\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{base_url}}/secure/users",
+                  "host": ["{{base_url}}"],
+                  "path": ["secure", "users"]
+                },
+                "description": "PROTEÇÃO: Apenas admin pode criar usuários"
+              }
+            },
+            {
+              "name": "List Users (Admin only)",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{secure_access_token}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/secure/users",
+                  "host": ["{{base_url}}"],
+                  "path": ["secure", "users"]
+                },
+                "description": "PROTEÇÃO: Apenas admin pode listar todos"
+              }
+            },
+            {
+              "name": "Get User by ID (Admin/Owner)",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{secure_access_token}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/secure/users/1",
+                  "host": ["{{base_url}}"],
+                  "path": ["secure", "users", "1"]
+                },
+                "description": "PROTEÇÃO: Ownership check - apenas admin ou próprio usuário"
+              }
+            },
+            {
+              "name": "Update User (Admin/Owner)",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{secure_access_token}}",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"updated@example.com\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{base_url}}/secure/users/2",
+                  "host": ["{{base_url}}"],
+                  "path": ["secure", "users", "2"]
+                },
+                "description": "PROTEÇÃO: Apenas admin ou owner + validação"
+              }
+            },
+            {
+              "name": "Delete User (Admin only)",
+              "request": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{secure_access_token}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/secure/users/3",
+                  "host": ["{{base_url}}"],
+                  "path": ["secure", "users", "3"]
+                },
+                "description": "PROTEÇÃO: Apenas admin pode deletar"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Balance",
+          "item": [
+            {
+              "name": "Credit Balance (Admin only)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{secure_access_token}}",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"userId\": 2,\n  \"amount\": 100\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{base_url}}/secure/balance/credit",
+                  "host": ["{{base_url}}"],
+                  "path": ["secure", "balance", "credit"]
+                },
+                "description": "PROTEÇÃO: Apenas admin + audit log"
+              }
+            },
+            {
+              "name": "Get My Balance",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{secure_access_token}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/secure/balance/me",
+                  "host": ["{{base_url}}"],
+                  "path": ["secure", "balance", "me"]
+                },
+                "description": "PROTEÇÃO: Apenas próprio saldo, sem query param"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Merchant",
+          "item": [
+            {
+              "name": "Update Callback URL (With Step-up)",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{secure_access_token}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "X-Step-Up-Token",
+                    "value": "{{step_up_token}}",
+                    "type": "text",
+                    "description": "Token obtido via /auth/reauth"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"callback_url\": \"https://api.example.com/webhook\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{base_url}}/secure/merchant/callbackurl",
+                  "host": ["{{base_url}}"],
+                  "path": ["secure", "merchant", "callbackurl"]
+                },
+                "description": "PROTEÇÃO: HTTPS obrigatório + allowlist + step-up + audit log"
+              }
+            },
+            {
+              "name": "Get Callback URL",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{secure_access_token}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/secure/merchant/callbackurl",
+                  "host": ["{{base_url}}"],
+                  "path": ["secure", "merchant", "callbackurl"]
+                },
+                "description": "PROTEÇÃO: Apenas própria configuração"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
+

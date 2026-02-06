@@ -1,0 +1,67 @@
+// API Security Lab - Database Schema
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  password  String   // bcrypt hash
+  role      String   // "admin" | "user"
+  balance   Float    @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  sessions       Session[]
+  auditLogs      AuditLog[]
+  merchantConfig MerchantConfig?
+}
+
+model Session {
+  id           String   @id @default(uuid())
+  userId       Int
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  refreshToken String   @unique
+  expiresAt    DateTime
+  createdAt    DateTime @default(now())
+}
+
+model MerchantConfig {
+  id          Int      @id @default(autoincrement())
+  userId      Int      @unique
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  callbackUrl String?
+  updatedAt   DateTime @updatedAt
+}
+
+model AuditLog {
+  id        Int      @id @default(autoincrement())
+  userId    Int?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  action    String   // "CREATE", "UPDATE", "DELETE", "CREDIT", "CALLBACK_CHANGE"
+  resource  String   // "user", "balance", "merchant"
+  details   String?  // JSON string com detalhes adicionais
+  ip        String
+  timestamp DateTime @default(now())
+}
+
+model RequestLog {
+  id         Int      @id @default(autoincrement())
+  method     String
+  path       String
+  ip         String
+  userId     Int?
+  statusCode Int
+  reason     String?  // Motivo de negação (para 401/403)
+  timestamp  DateTime @default(now())
+  
+  @@index([timestamp])
+  @@index([userId])
+}
+
